@@ -1,0 +1,17 @@
+{
+  "name": "java-jev-kit",
+  "version": "1.0.1",
+  "private": true,
+  "description": "Codex-side Jev decision layer for Java backend development.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "bin": { "jev-kit": "bin/jev-kit.mjs" },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "verify": "node scripts/verify.mjs",
+    "eval": "python project/docs/jev/evals/evaluate.py",
+    "test": "npm run verify && npm run eval && node --test",
+    "uninstall": "node scripts/uninstall.mjs"
+  }
+}

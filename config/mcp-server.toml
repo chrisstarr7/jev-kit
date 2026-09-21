@@ -1,0 +1,11 @@
+# java-jev-kit:start
+# Add this block to the user's Codex config.toml.
+# Keep TYPESAFE_API_KEY in the process environment; never put it here.
+[mcp_servers.jev]
+type = "stdio"
+command = "uvx"
+# Source version: v0.2.1; commit-pinned for reproducible installs.
+args = ["--from", "git+https://github.com/blakestone-x/jev-mcp@983b69444593d27be0c99d4ab134041929e5a55a", "jev-mcp"]
+enabled = true
+startup_timeout_sec = 30
+# java-jev-kit:end

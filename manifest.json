@@ -1,0 +1,21 @@
+{
+  "name": "java-jev-kit",
+  "version": "1.0.1",
+  "description": "Codex-side Jev decision layer for Java backend development.",
+  "license": "UNLICENSED",
+  "install": {
+    "skill": "skill/java-jev",
+    "project_assets": "project/docs/jev",
+    "project_skill": ".agents/skills/java-jev",
+    "mcp_template": "config/mcp-server.toml"
+  },
+  "requirements": {
+    "codex": "Codex Desktop or Codex CLI with user-level skills and MCP support",
+    "python": "3.9+ for the offline evaluator",
+    "uvx": "required only for live Jev MCP calls"
+  },
+  "secrets": {
+    "environment_variable": "TYPESAFE_API_KEY",
+    "stored_in_package": false
+  }
+}

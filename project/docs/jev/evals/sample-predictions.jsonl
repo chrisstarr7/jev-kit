@@ -1,0 +1,6 @@
+{"case_id":"file-001","answer":"direct","confidence":0.96,"latency_ms":210,"context_saved_pct":35}
+{"case_id":"risk-001","answer":"1","confidence":0.91,"latency_ms":190,"context_saved_pct":20}
+{"case_id":"sql-001","answer":"read_complex","confidence":0.88,"latency_ms":240,"context_saved_pct":25}
+{"case_id":"npe-001","answer":"3","confidence":0.93,"latency_ms":220,"context_saved_pct":18}
+{"case_id":"test-001","answer":"module_regression","confidence":0.89,"latency_ms":205,"context_saved_pct":22}
+{"case_id":"gate-001","answer":"deep_review","confidence":0.97,"latency_ms":230,"context_saved_pct":28}

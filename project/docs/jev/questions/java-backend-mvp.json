@@ -1,0 +1,104 @@
+{
+  "version": "1.1.0",
+  "name": "java-backend-mvp",
+  "purpose": "Bounded development-time decisions for Codex. Jev output is advisory and never replaces code reading or hard review gates.",
+  "execution_policy": {
+    "fresh_user_turn_only": true,
+    "reuse_across_tool_continuation": true,
+    "skip_auxiliary_prompts": ["title_generation", "system_only", "tool_only"],
+    "max_attempts": 1,
+    "timeout_ms": 1500,
+    "min_confidence": 0.75,
+    "invalid_result_action": "continue_with_codex",
+    "context_limit_chars": 12000
+  },
+  "privacy": {
+    "send_only": [
+      "repository-relative file paths",
+      "short redacted code summaries",
+      "schema names without customer data",
+      "bounded SQL/API excerpts with secrets and literals removed"
+    ],
+    "never_send": [
+      "API keys, tokens, passwords, cookies or private certificates",
+      "customer PII or production records",
+      "full repository archives or unrestricted database dumps"
+    ]
+  },
+  "fallback": {
+    "on": ["missing_api_key", "mcp_unavailable", "timeout", "malformed_response", "low_confidence", "conflicting_evidence"],
+    "action": "continue_with_codex",
+    "rule": "Jev failure must not block work. Codex must state its evidence and apply hard gates independently."
+  },
+  "hard_gates": [
+    "sql",
+    "api_contract",
+    "transaction",
+    "message_queue",
+    "permission",
+    "migration",
+    "security"
+  ],
+  "decisions": [
+    {
+      "id": "file_relevance",
+      "question": "Which candidate files are relevant to the requested change?",
+      "primitive": "choice",
+      "input_fields": ["task_summary", "candidate_path", "path_role", "dependency_summary"],
+      "choices": ["direct", "supporting", "incidental", "unrelated"],
+      "answer_contract": "Return one choice, confidence in [0,1], and one short evidence string.",
+      "use_when": "The candidate file list is larger than the likely change surface.",
+      "threshold": "Use only confidence >= 0.75 to prune exploration; otherwise keep the file for Codex review."
+    },
+    {
+      "id": "change_risk",
+      "question": "What is the implementation risk of this bounded change?",
+      "primitive": "score",
+      "input_fields": ["change_summary", "layers_touched", "external_dependencies", "data_or_permission_impact"],
+      "rubric": {"0": "local and reversible", "1": "single module behavior", "2": "cross-layer or external contract", "3": "data, permission, security or production behavior"},
+      "answer_contract": "Return an integer score 0-3, confidence in [0,1], and evidence.",
+      "use_when": "Planning review depth before implementation.",
+      "threshold": "Score >= 2 requires a Codex review plan; score 3 requires deep review regardless of confidence."
+    },
+    {
+      "id": "sql_risk",
+      "question": "Does the change create or alter meaningful SQL/data risk?",
+      "primitive": "choice",
+      "input_fields": ["sql_summary", "tables_or_indexes", "dynamic_clauses", "write_operation", "migration_or_hotfix"],
+      "choices": ["none", "read_low", "read_complex", "write_or_migration", "unsafe_or_unknown"],
+      "answer_contract": "Return one choice, confidence in [0,1], and evidence.",
+      "use_when": "Mapper XML, repository query, migration, hotfix or data access behavior is in scope.",
+      "threshold": "Anything except none/read_low is a hard Codex SQL review gate. Unknown is treated as unsafe."
+    },
+    {
+      "id": "npe_risk",
+      "question": "How likely is a null-related runtime failure in the changed path?",
+      "primitive": "score",
+      "input_fields": ["changed_path", "nullable_sources", "dereferences", "fallbacks_or_guards", "async_or_external_boundary"],
+      "rubric": {"0": "no nullable boundary or guarded", "1": "nullable value with local guard", "2": "multiple nullable/external boundaries", "3": "unguarded dereference or asynchronous race"},
+      "answer_contract": "Return an integer score 0-3, confidence in [0,1], and evidence.",
+      "use_when": "Service, mapper result, Feign response, callback or async workflow changes are involved.",
+      "threshold": "Score >= 2 or confidence < 0.75 requires explicit Codex null-path review."
+    },
+    {
+      "id": "test_required",
+      "question": "What regression-test level is required for this change?",
+      "primitive": "choice",
+      "input_fields": ["change_risk", "existing_tests", "bug_or_regression", "contract_change", "data_or_permission_impact"],
+      "choices": ["none", "targeted_unit", "module_regression", "integration_or_manual"],
+      "answer_contract": "Return one choice, confidence in [0,1], and evidence.",
+      "use_when": "Selecting the smallest test that proves the changed behavior.",
+      "threshold": "Do not downgrade a known bug, contract, permission, data or async change below module_regression without Codex evidence."
+    },
+    {
+      "id": "review_gate",
+      "question": "What Codex review gate must remain before delivery?",
+      "primitive": "choice",
+      "input_fields": ["change_risk", "sql_risk", "npe_risk", "test_required", "hard_gate_hits", "diff_summary"],
+      "choices": ["allow", "codex_review", "deep_review"],
+      "answer_contract": "Return one choice, confidence in [0,1], and evidence.",
+      "use_when": "Finalizing whether the change can pass the normal delivery checklist.",
+      "threshold": "Any hard gate hit or unsafe/unknown signal means at least deep_review; Jev cannot approve its own bypass."
+    }
+  ]
+}
