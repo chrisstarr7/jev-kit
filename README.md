@@ -21,7 +21,7 @@ Jev 只负责有限选项的开发时分类；代码阅读、方案设计、最�
 
 ```bash
 cd <java-project-root>
-npm install --ignore-scripts --no-save git+https://github.com/<owner>/<repository>.git#v1.0.1
+npm install --ignore-scripts --no-save git+https://github.com/chrisstarr7/jev-kit.git#v1.0.1
 npx --no-install jev-kit init
 ```
 
@@ -30,7 +30,7 @@ npx --no-install jev-kit init
 如果仓库是私有仓库，使用者必须具备 GitHub 访问权限。已配置 SSH Key 时可使用：
 
 ```bash
-npm install --ignore-scripts --no-save git+ssh://git@github.com/<owner>/<repository>.git#v1.0.1
+npm install --ignore-scripts --no-save git+ssh://git@github.com/chrisstarr7/jev-kit.git#v1.0.1
 ```
 
 如果只想安装资源、不修改 Codex MCP 配置：
@@ -138,7 +138,7 @@ Jev 的约束：
 建议始终安装明确的 Git tag，不要依赖会变化的默认分支：
 
 ```bash
-npm install --ignore-scripts --no-save git+https://github.com/<owner>/<repository>.git#v1.0.1
+npm install --ignore-scripts --no-save git+https://github.com/chrisstarr7/jev-kit.git#v1.0.1
 npx --no-install jev-kit init --force
 ```
 
