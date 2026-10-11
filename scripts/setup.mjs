@@ -87,15 +87,6 @@ async function writeMarker(target, version) {
   }, null, 2)}\n`, "utf8");
 }
 
-async function hasManagedMarker(target) {
-  try {
-    const marker = JSON.parse(await readFile(join(target, markerName), "utf8"));
-    return marker.kit === "java-jev-kit";
-  } catch {
-    return false;
-  }
-}
-
 async function configureMcpConfig(codexHome, { stamp }) {
   const configPath = join(codexHome, "config.toml");
   const snippet = await readFile(join(packageRoot, "config/mcp-server.toml"), "utf8");
@@ -136,16 +127,16 @@ export async function runSetup({
 
   const skillTarget = join(codexHome, "skills/java-jev");
   const skillCopied = await copyManaged(join(packageRoot, "skill/java-jev"), skillTarget, { force, stamp, label: "java-jev Skill" });
-  if (skillCopied || await hasManagedMarker(skillTarget)) await writeMarker(skillTarget, manifest.version);
+  if (skillCopied) await writeMarker(skillTarget, manifest.version);
 
   if (resolvedProject) {
     const projectTarget = join(resolvedProject, "docs/jev");
     const projectCopied = await copyManaged(join(packageRoot, "project/docs/jev"), projectTarget, { force, stamp, label: "project Jev assets" });
-    if (projectCopied || await hasManagedMarker(projectTarget)) await writeMarker(projectTarget, manifest.version);
+    if (projectCopied) await writeMarker(projectTarget, manifest.version);
 
     const projectSkillTarget = join(resolvedProject, ".agents/skills/java-jev");
     const projectSkillCopied = await copyManaged(join(packageRoot, "skill/java-jev"), projectSkillTarget, { force, stamp, label: "project Agent Skill" });
-    if (projectSkillCopied || await hasManagedMarker(projectSkillTarget)) await writeMarker(projectSkillTarget, manifest.version);
+    if (projectSkillCopied) await writeMarker(projectSkillTarget, manifest.version);
   } else {
     console.log("No Maven project root detected; project docs were not copied.");
   }

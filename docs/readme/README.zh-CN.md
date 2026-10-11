@@ -1,8 +1,8 @@
-# Java Jev Kit
+# Jev Kit
 
 [English](../../README.md) | 简体中文
 
-面向 Java 后端开发的可选、有限范围决策辅助工具。Jev 负责分类少量工程问题；代码阅读、方案决定、变更审查和最终交付仍由你的 AI 助手负责。
+**面向 Java 后端研发的 Codex Skill 与 MCP 决策辅助工具。** Jev 对少量工程问题进行有限分类；代码阅读、实现决策、审查和交付仍由 AI 助手负责。
 
 ## 安装
 
@@ -12,65 +12,76 @@
 npx -y chrisstarr7/jev-kit
 ```
 
-命令通过 npm 从公开 GitHub 仓库获取程序，为当前 Codex 用户安装 Skill；检测到 `pom.xml` 时，还会复制项目决策包和项目 Skill，并向 Codex 的 `config.toml` 添加 Jev MCP 配置。安装后重启 Codex。需要 Node.js 20+ 和 Git。实时调用 Jev 还需要 `uvx`，并在启动 Codex 的环境中提供 `TYPESAFE_API_KEY`；安装器不会保存该密钥。
+安装器会为当前 Codex 用户安装 Skill；发现 `pom.xml` 时复制项目决策包和项目 Skill；如果尚无 Jev MCP 配置，则向 Codex 用户级 `config.toml` 添加配置。已有目标默认保留。安装后重启 Codex。该命令会运行仓库当前默认分支的程序，请先检查源码。
 
-不带子命令时默认执行 `init`。只安装资源、不改 MCP 配置时执行 `npx -y chrisstarr7/jev-kit setup`。项目不在当前目录时，添加 `--project-root /项目路径`。
+**需要：** Node.js 20+ 和 Git。实时调用 Jev 还需要 `uvx`，并在启动 Codex 的进程环境中设置 `TYPESAFE_API_KEY`。安装器不会将密钥写入磁盘。
 
-## 一次研发任务中的调用链
+只安装 Skill 和项目文件、不修改 MCP 配置：
 
-```mermaid
-sequenceDiagram
-    participant D as 开发者
-    participant A as AI 助手
-    participant S as java-jev Skill
-    participant M as Jev MCP
-    D->>A: 提出 Java 研发任务
-    A->>S: 宿主支持时加载项目指导
-    A->>A: 阅读代码，判断有限分类是否有帮助
-    opt 有用且输入安全时最多调用一次
-        A->>M: 向 jev_ask 发送最小化、脱敏后的上下文
-        M-->>A: 返回分类结果和置信度
-        A->>A: 校验结果，保留硬审查门禁；否则回退
-    end
-    A-->>D: 按正常研发流程继续并说明证据
+```bash
+npx -y chrisstarr7/jev-kit setup
 ```
 
-Skill 是指导文本，不是宿主事件钩子，因此无法保证每轮都自动调用 Jev。AI 对每个新的用户轮次最多调用一次；工具续接不重复调用，同一任务未变化时复用已接受结果。Skill 或 MCP 不可用时，AI 应按常规证据继续工作。
+如果 Maven 项目不在当前目录的上级路径中，给命令添加 `--project-root /项目路径`。
 
-## 决策范围与安全边界
+## 一次任务如何使用 Jev
 
-决策包包含文件相关性、变更风险、SQL 风险、空值运行风险、测试级别和审查门禁。Jev 只提供建议：答案类型必须符合定义、置信度至少为 `0.75`，且不能与代码证据冲突。
+1. 宿主支持且任务符合范围时，Codex 加载 Skill。安装 Skill 不代表每轮都一定调用。
+2. 助手先阅读相关代码和决策包，再判断一次有限分类是否有帮助。
+3. 只有在有用且输入安全时，才向 `jev_ask` MCP 工具发送简短、脱敏的上下文。每个新的用户轮次最多调用一次；工具续接复用已有结果。
+4. 助手检查答案类型、置信度（`>= 0.75`）及其与代码证据是否一致。遇到错误、超时、缺少凭据、低置信度或证据冲突时，按常规工作流继续。
+5. Jev 只提供建议。它不写 Java 代码、不批准生产变更、不取消测试，也不绕过审查门禁。
 
-调用前先阅读相关代码，只发送最少且已脱敏的上下文。禁止发送凭据、Token、Cookie、密码、客户个人信息、生产记录、数据库 dump 或完整源码归档。SQL、API 契约、事务、消息队列、权限、安全和迁移始终需要人工/AI 深度审查。Jev 不生成 Java 代码、不批准生产变更，也不能取消测试或审查。
+## 决策范围
 
-MCP 使用 `uvx` 启动社区 `jev-mcp` 服务，实时请求需要 `TYPESAFE_API_KEY`。密钥保留在进程环境变量中。发送上下文前请查看 MCP 服务提供方的数据处理方式；脱敏仍由 AI 助手负责。
+| 决策 | 用途 |
+| --- | --- |
+| `file_relevance` | 从较大的候选文件列表中筛选相关文件 |
+| `change_risk` | 选择适当的审查深度 |
+| `sql_risk` | 标出数据访问和迁移风险 |
+| `npe_risk` | 检查空值及外部边界风险 |
+| `test_required` | 建议回归测试级别 |
+| `review_gate` | 明确交付前所需的审查门禁 |
+
+不论 Jev 返回什么，SQL、API 契约、事务、消息队列、权限、安全和数据库迁移仍需严格审查。
+
+## 隐私与外部请求
+
+实时请求通过社区 `jev-mcp` 服务发出，并需要 `TYPESAFE_API_KEY`。调用前先阅读相关代码，只发送当前判断所需的最少脱敏内容。
+
+禁止发送凭据、Token、Cookie、密码、客户个人信息、生产记录、数据库 dump 或完整源码归档。如果无法安全缩减上下文，就跳过 Jev。发送项目信息前，请先查看 MCP 服务提供方的数据处理条款。密钥只保留在进程环境中，不写入仓库或 Codex 配置。
 
 ## 安装内容
 
-| 资源 | 位置 | 用途 |
+| 资源 | 默认位置 | 说明 |
 | --- | --- | --- |
-| 用户级 Skill | `$CODEX_HOME/skills/java-jev`（默认 `~/.codex/skills/java-jev`） | AI 助手使用说明 |
-| 项目决策包 | `<项目>/docs/jev` | 决策定义和评估材料 |
+| 用户级 Skill | `$CODEX_HOME/skills/java-jev` 或 `~/.codex/skills/java-jev` | 加载 AI 助手指导 |
+| 项目决策包 | `<项目>/docs/jev` | 团队可按需提交到 Git |
 | 项目 Skill | `<项目>/.agents/skills/java-jev` | 项目级指导 |
-| MCP 配置 | `$CODEX_HOME/config.toml` | 注册本地 Jev MCP 服务 |
+| MCP 配置 | `$CODEX_HOME/config.toml` | 当前用户的 Codex 配置 |
 
-已有文件默认保留；传入 `--force` 才会替换目标，并在替换前备份。安装器不会修改 Java 源码。项目资源可由团队决定是否提交；用户级 MCP 配置会影响该用户的 Codex 会话。
+默认不覆盖已有目标；传入 `--force` 后会先备份再替换。安装器不修改 Java 源码。`setup` 不改 MCP 配置；无子命令时会初始化资源并更新用户级 MCP 配置。
 
-## 常用命令
+## 更新与卸载
 
-| 命令 | 作用 |
-| --- | --- |
-| `npx -y chrisstarr7/jev-kit` | 初始化资源并配置 MCP |
-| `npx -y chrisstarr7/jev-kit setup` | 安装资源，不修改 MCP 配置 |
-| `npx -y chrisstarr7/jev-kit init --force` | 备份后替换受管理目标 |
-| `npx -y chrisstarr7/jev-kit uninstall` | 移除用户 Skill，保留项目资源和 MCP 配置 |
+已有文件默认保留。要替换为当前版本，请使用 `--force`。先检查本地修改：安装器会备份旧目标，但不会合并自定义内容。
 
-卸载会把受管理的 Skill/资源移到可恢复的备份路径。项目文件和 MCP 配置需要明确传入参数才会分离；操作前可查看 `npx -y chrisstarr7/jev-kit uninstall --help`。
+```bash
+npx -y chrisstarr7/jev-kit init --force
+```
+
+卸载用户级 Skill：
+
+```bash
+npx -y chrisstarr7/jev-kit uninstall
+```
+
+默认保留项目资源和 MCP 配置。受管理的文件会移动到可恢复的备份路径。移除项目资源或 MCP 配置前，请查看 `npx -y chrisstarr7/jev-kit uninstall --help`。
 
 ## 开发与验证
 
-`npm test` 会执行资源校验、离线评估和 CLI 测试。`npm pack --dry-run` 可检查打包内容。成功安装不等于宿主每轮都会加载或遵循 Skill；宿主端到端行为需要单独验证。
+`npm test` 会执行仓库检查、离线评估和 CLI 测试。`npm pack --dry-run` 可查看打包内容。包检查通过不代表宿主会加载或遵循 Skill；宿主端行为需要单独验证。
 
 ## 许可证
 
-仓库当前声明为 `UNLICENSED`，没有授予用户再分发或修改该包的许可。公开 GitHub 地址和可用的安装命令不等于开源许可证。将项目介绍为开源之前，请先添加明确许可证。
+仓库当前声明为 `UNLICENSED`，没有授予使用、修改或再分发许可。GitHub 仓库公开不等于开源；以开源软件方式分发前，需要添加明确许可证。

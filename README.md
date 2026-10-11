@@ -1,76 +1,87 @@
-# Java Jev Kit
+# Jev Kit
 
 English | [简体中文](docs/readme/README.zh-CN.md)
 
-An optional, bounded decision aid for Java backend development. Jev classifies a small set of engineering questions; your coding assistant remains responsible for reading the code, making decisions, reviewing changes, and delivering the work.
+**A Codex Skill and MCP integration for bounded, advisory decisions in Java backend development.** Jev classifies a small set of engineering questions; your coding assistant still owns code reading, implementation, review, and delivery.
 
 ## Install
 
-From the root of a Maven project, run:
+Run this from the root of a Maven project:
 
 ```bash
 npx -y chrisstarr7/jev-kit
 ```
 
-This downloads the public GitHub repository through npm, installs the Skill for your Codex user, copies the project decision pack and project Skill when a `pom.xml` is found, and adds the Jev MCP entry to your Codex `config.toml`. Restart Codex after installation. Requires Node.js 20+ and Git. Live Jev calls also require `uvx` and `TYPESAFE_API_KEY` in the environment that starts Codex; the key is never written by this installer.
+The installer adds the Skill to your Codex user, copies the decision pack and project Skill when it finds `pom.xml`, and adds the Jev MCP entry to your Codex `config.toml` if one is not already present. Existing targets are kept. Restart Codex after installation. This command runs the repository's current default branch; review the source before running it.
 
-The command defaults to `init`. To install resources without changing MCP configuration, run `npx -y chrisstarr7/jev-kit setup`. To initialize a project outside the current directory, add `--project-root /path/to/project`.
+**Requirements:** Node.js 20+ and Git. Live Jev requests also need `uvx` and `TYPESAFE_API_KEY` in the environment that starts Codex. The installer never writes the key to disk.
 
-## What happens during a task
+To install the Skill and project files without changing MCP configuration:
 
-```mermaid
-sequenceDiagram
-    participant D as Developer
-    participant A as Coding assistant
-    participant S as java-jev Skill
-    participant M as Jev MCP
-    D->>A: Ask for Java development work
-    A->>S: Load project guidance when supported by the host
-    A->>A: Read code and decide whether a bounded classification helps
-    opt One useful, safe question
-        A->>M: Send minimal, redacted context to jev_ask
-        M-->>A: Return a classification and confidence
-        A->>A: Validate result; keep hard review gates; otherwise fall back
-    end
-    A-->>D: Continue normal development and report evidence
+```bash
+npx -y chrisstarr7/jev-kit setup
 ```
 
-The Skill is guidance, not a host event hook. It cannot guarantee that every new turn automatically invokes Jev. The assistant should call it at most once for a fresh user turn, skip tool continuations, and reuse an accepted result while that task remains unchanged. If the Skill or MCP is unavailable, the assistant continues with its normal evidence-based workflow.
+If the Maven project is not an ancestor of your current directory, add `--project-root /path/to/project` to either command.
 
-## Decision and safety boundaries
+## How a task uses Jev
 
-The decision pack covers file relevance, change risk, SQL risk, null-related runtime risk, test level, and review gate. Jev is advisory: a response is usable only when its answer matches the declared type, has confidence of at least `0.75`, and does not conflict with code evidence.
+1. Codex loads the Skill when the host supports it and the task matches its scope. Installing a Skill does not guarantee that it will run on every turn.
+2. The assistant reads relevant code and the decision pack, then decides whether one bounded classification would help.
+3. If useful and safe, it sends a short, redacted context to the `jev_ask` MCP tool. It should call Jev at most once per fresh user turn and reuse the result during tool continuations.
+4. The assistant checks the answer type, confidence (`>= 0.75`), and agreement with code evidence. On errors, timeouts, missing credentials, low confidence, or conflicting evidence, it continues with its normal workflow.
+5. Jev remains advisory. It cannot write Java code, approve a production change, waive a test, or bypass a review gate.
 
-The assistant must read the relevant code before asking Jev and send only the minimum redacted context. Never send credentials, tokens, cookies, passwords, customer personal data, production records, database dumps, or a full source archive. SQL, API contracts, transactions, queues, permissions, security, and migrations remain hard review gates. Jev cannot generate Java code, approve production changes, or waive a test or review.
+## Decisions
 
-The configured MCP runs the community `jev-mcp` server with `uvx` and requires `TYPESAFE_API_KEY` for live requests. The key stays in the process environment. Review the MCP provider's own data handling before sending any context; redaction remains the assistant's responsibility.
-
-## Files installed
-
-| Resource | Location | Purpose |
-| --- | --- | --- |
-| User Skill | `$CODEX_HOME/skills/java-jev` (default: `~/.codex/skills/java-jev`) | Assistant instructions |
-| Project decision pack | `<project>/docs/jev` | Java decision definitions and evaluation materials |
-| Project Skill | `<project>/.agents/skills/java-jev` | Project-local guidance |
-| MCP configuration | `$CODEX_HOME/config.toml` | Registers the local Jev MCP server |
-
-Existing files are kept unless `--force` is supplied; replaced targets are backed up. The installer does not edit Java source files. Project assets may be committed if your team wants to share them. The user-level MCP configuration affects Codex sessions for this user.
-
-## Commands
-
-| Command | Effect |
+| Decision | Purpose |
 | --- | --- |
-| `npx -y chrisstarr7/jev-kit` | Initialize resources and configure MCP |
-| `npx -y chrisstarr7/jev-kit setup` | Install resources without changing MCP configuration |
-| `npx -y chrisstarr7/jev-kit init --force` | Replace managed targets after creating backups |
-| `npx -y chrisstarr7/jev-kit uninstall` | Detach the user Skill; keep project assets and MCP config |
+| `file_relevance` | Narrow a large candidate file list |
+| `change_risk` | Choose an appropriate review depth |
+| `sql_risk` | Flag data access and migration risk |
+| `npe_risk` | Identify null and external-boundary risk |
+| `test_required` | Recommend a regression-test level |
+| `review_gate` | Keep the required review gate visible |
 
-Uninstall moves managed Skill/assets to recoverable backup paths. Project files and MCP config require explicit flags to detach. Review `npx -y chrisstarr7/jev-kit uninstall --help` before removing them.
+SQL, API contracts, transactions, message queues, permissions, security, and database migrations remain hard review gates regardless of Jev's answer.
+
+## Privacy and external requests
+
+Live calls go through the community `jev-mcp` server and require `TYPESAFE_API_KEY`. The assistant must read the relevant code before calling Jev and send only the smallest redacted context needed for the selected decision.
+
+Never send credentials, tokens, cookies, passwords, customer personal data, production records, database dumps, or full source archives. If context cannot be safely minimized, skip Jev. Review the MCP provider's data-handling terms before sending project context. The key remains in the process environment and is not stored in the repository or Codex config.
+
+## Installed files
+
+| Resource | Default location | Notes |
+| --- | --- | --- |
+| User Skill | `$CODEX_HOME/skills/java-jev` or `~/.codex/skills/java-jev` | Loads the assistant guidance |
+| Project decision pack | `<project>/docs/jev` | May be committed if the team wants to share it |
+| Project Skill | `<project>/.agents/skills/java-jev` | Project-level guidance |
+| MCP entry | `$CODEX_HOME/config.toml` | User-level Codex configuration |
+
+Existing targets are kept unless `--force` is supplied; replaced targets are backed up. The installer does not edit Java source files. `setup` skips MCP configuration. The default command initializes resources and updates the user-level MCP config.
+
+## Update and uninstall
+
+Existing files are intentionally left untouched. To replace managed files with the current version, pass `--force`; review local edits first because the installer backs up the old targets but does not merge them.
+
+```bash
+npx -y chrisstarr7/jev-kit init --force
+```
+
+Uninstall the user Skill with:
+
+```bash
+npx -y chrisstarr7/jev-kit uninstall
+```
+
+Uninstall preserves project assets and MCP config by default. Managed files are moved to recoverable backup paths. Review `npx -y chrisstarr7/jev-kit uninstall --help` before detaching project assets or the MCP entry.
 
 ## Development and verification
 
-Run `npm test` for resource checks, offline evaluation, and CLI tests. Run `npm pack --dry-run` to inspect the package contents. Installation on a host does not prove that the host loads or follows the Skill on every turn; host-side end-to-end behavior must be verified separately.
+Run `npm test` for repository checks, offline evaluation, and CLI tests. Run `npm pack --dry-run` to inspect package contents. A passing package check does not prove a host will load or follow the Skill; verify host-side behavior separately.
 
 ## License
 
-The repository currently declares `UNLICENSED`. This does not grant users permission to redistribute or modify the package. A public GitHub URL and a working install command do not replace an explicit open-source license. Add a license before presenting this project as open source.
+This repository currently declares `UNLICENSED`. That does not grant permission to use, modify, or redistribute the package. A public GitHub repository is not automatically open source; add an explicit license before distributing it as open-source software.
